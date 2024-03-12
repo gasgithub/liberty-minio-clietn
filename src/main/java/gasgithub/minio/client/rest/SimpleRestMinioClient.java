@@ -105,13 +105,15 @@ public class SimpleRestMinioClient {
         JsonArrayBuilder itemArrayBuilder = factory.createArrayBuilder();
         builder.add("items", itemArrayBuilder);
 
-        System.out.println("results:" + results);
+        
         for (Result<Item> result : results) {
             try {
                 Item item = result.get();
-                itemArrayBuilder.add(factory.createObjectBuilder()
-                .add("name", item.objectName())
-                .add("isdir", item.isDir())
+                System.out.println("adding :" + item.objectName());
+                itemArrayBuilder.add(
+                    factory.createObjectBuilder()
+                    .add("name", item.objectName())
+                    .add("isdir", item.isDir())
                 );
             } catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException | InsufficientDataException
                     | InternalException | InvalidResponseException | NoSuchAlgorithmException | ServerException
@@ -205,14 +207,6 @@ public class SimpleRestMinioClient {
                     e.printStackTrace();
                 }
 
-
-                // try (InputStream is = new FileInputStream("E:\\tmp\\hcsd\\model-data\\mnist_test.csv")) {
-                //     int len;
-                //     byte[] buffer = new byte[4096];
-                //     while ((len = is.read(buffer, 0, buffer.length)) != -1) {
-                //         os.write(buffer, 0, len);
-                //     }
-                // }
                 writer.flush();
             }
         };
