@@ -30,6 +30,11 @@ import io.minio.messages.Item;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonBuilderFactory;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonObjectBuilder;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
@@ -57,8 +62,8 @@ public class SimpleRestMinioClient {
     @GET
     @Path("buckets")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<Bucket> getBuckets(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey) {
-        //Properties buckets = new Properties();
+    public Properties getBuckets(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey) {
+        Properties buckets = new Properties();
 
         System.out.println(accessKey + " : "+ secretKey);
 
@@ -67,23 +72,27 @@ public class SimpleRestMinioClient {
         List<Bucket> listBuckets = new ArrayList<>();
         try {
             listBuckets = minioClient.listBuckets();
-            System.out.println(listBuckets);
+            ArrayList<String> bucketNames = new ArrayList<>();
+            for (Bucket bucket : listBuckets) {
+                bucketNames.add(bucket.name());
+            }
+            buckets.put("buckets", bucketNames);
+            System.out.println(buckets);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
-        //String bucktes[] = { "my1", "my2"};
-        //buckets.put("buckets", bucktes);
-        return listBuckets;
+        
+        return buckets;
     }
 
 
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("{bucket}")
-    public Iterable<Result<Item>> getFiles(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket) {
+    @Path("buckets/{bucket}")
+    public JsonObject getItems(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket) {
         System.out.println("Bucket:" + bucket);
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
 
@@ -91,19 +100,86 @@ public class SimpleRestMinioClient {
         Iterable<Result<Item>> results = minioClient.listObjects(
             ListObjectsArgs.builder().bucket(bucket).build());
 
+        JsonBuilderFactory factory = Json.createBuilderFactory(null);
+        JsonObjectBuilder builder = factory.createObjectBuilder();
+        JsonArrayBuilder itemArrayBuilder = factory.createArrayBuilder();
+        builder.add("items", itemArrayBuilder);
+
         System.out.println("results:" + results);
+        for (Result<Item> result : results) {
+            try {
+                Item item = result.get();
+                itemArrayBuilder.add(factory.createObjectBuilder()
+                .add("name", item.objectName())
+                .add("isdir", item.isDir())
+                );
+            } catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException | InsufficientDataException
+                    | InternalException | InvalidResponseException | NoSuchAlgorithmException | ServerException
+                    | XmlParserException | IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
 
         // String fileList[] = { "file1", "file2"};
         // Properties files = new Properties();
         // files.put("files", fileList );
-        return results;
+        
+        return builder.build();
     }
 
     @GET
-    @Path("{bucket}/{filename}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("buckets/{bucket}/{filepath:.*}")
+    public JsonObject getItem(@HeaderParam("X-Access-Key") String accessKey, 
+                              @HeaderParam("X-Secret-Key") String secretKey, 
+                              @PathParam("bucket") String bucket,
+                              @PathParam("filepath") String filepath) {
+        System.out.println("Bucket:" + bucket);
+        System.out.println("filepath:" + filepath);
+
+        MinioClient minioClient = getMinioClient(accessKey, secretKey);
+
+        // Lists objects information.
+        Iterable<Result<Item>> results = minioClient.listObjects(
+            ListObjectsArgs.builder().bucket(bucket).prefix(filepath).build());
+
+        JsonBuilderFactory factory = Json.createBuilderFactory(null);
+        JsonObjectBuilder builder = factory.createObjectBuilder();
+        JsonArrayBuilder itemArrayBuilder = factory.createArrayBuilder();
+        builder.add("items", itemArrayBuilder);
+
+        System.out.println("results:" + results);
+        for (Result<Item> result : results) {
+            try {
+                Item item = result.get();
+                itemArrayBuilder.add(factory.createObjectBuilder()
+                .add("name", item.objectName())
+                .add("isdir", item.isDir())
+                );
+            } catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException | InsufficientDataException
+                    | InternalException | InvalidResponseException | NoSuchAlgorithmException | ServerException
+                    | XmlParserException | IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+        // String fileList[] = { "file1", "file2"};
+        // Properties files = new Properties();
+        // files.put("files", fileList );
+        
+        return builder.build();
+    }
+
+
+
+    @GET
+    @Path("/download/{bucket}/{filename:.*}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response getFile(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket, @PathParam("filename") String filename) throws Exception {
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
+        System.out.println("filename: " + filename);
 
         StreamingOutput stream = new StreamingOutput() {
             @Override
