@@ -11,5 +11,7 @@
 
     <httpEndpoint httpPort="${http.port}" httpsPort="${https.port}"
                   id="defaultHttpEndpoint" host="*" />
+    
+    <webContainer skipEncodedCharVerification="true"/>
     <webApplication location="minio-rest-client.war" contextRoot="/"/>
   </server>
