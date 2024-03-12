@@ -130,7 +130,7 @@ public class SimpleRestMinioClient {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("buckets/{bucket}/{filepath:.*}")
+    @Path("buckets/{bucket}/{filepath : .+}")
     public JsonObject getItem(@HeaderParam("X-Access-Key") String accessKey, 
                               @HeaderParam("X-Secret-Key") String secretKey, 
                               @PathParam("bucket") String bucket,
@@ -153,6 +153,7 @@ public class SimpleRestMinioClient {
         for (Result<Item> result : results) {
             try {
                 Item item = result.get();
+                System.out.println("name:" + item.objectName());
                 itemArrayBuilder.add(factory.createObjectBuilder()
                 .add("name", item.objectName())
                 .add("isdir", item.isDir())
@@ -168,14 +169,15 @@ public class SimpleRestMinioClient {
         // String fileList[] = { "file1", "file2"};
         // Properties files = new Properties();
         // files.put("files", fileList );
-        
-        return builder.build();
+        JsonObject jsonObject = builder.build();
+        System.out.println("jsonObject:" + jsonObject);
+        return 
     }
 
 
 
     @GET
-    @Path("/download/{bucket}/{filename:.*}")
+    @Path("/download/{bucket}/{filename : .+}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response getFile(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket, @PathParam("filename") String filename) throws Exception {
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
