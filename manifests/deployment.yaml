@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: miniorest
+  labels:
+    app: miniorest
+spec:
+  selector:
+    matchLabels:
+      app: miniorest
+  template:
+    metadata:
+      labels:
+        app: miniorest
+    spec:
+      containers:
+      - name: miniorest-container
+        image: image-registry.openshift-image-registry.svc:5000/miniorest/miniorest:latest
+        ports:
+        - containerPort: 9080
+        envFrom:
+          - secretRef:
+              name: cos-secret            

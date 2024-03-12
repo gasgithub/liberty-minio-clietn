@@ -1,0 +1,11 @@
+<server description="Intro REST Guide Liberty server">
+    <featureManager>
+        <feature>restfulWS-3.1</feature>
+        <feature>jsonb-3.0</feature>
+        <feature>mpConfig-3.1</feature>
+        <feature>mpOpenAPI-3.1</feature>
+    </featureManager>
+    <httpEndpoint httpPort="${http.port}" httpsPort="${https.port}"
+                  id="defaultHttpEndpoint" host="*" />
+    <webApplication location="minio-rest-client.war" contextRoot="${app.context.root}"/>
+  </server>
