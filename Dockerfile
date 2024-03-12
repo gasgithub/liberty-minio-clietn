@@ -8,7 +8,7 @@ COPY --chown=1001:0  src/main/liberty/config/server.xml /config/
 RUN features.sh
 
 # Add app
-COPY --chown=1001:0  target/mino-rest-client.war /config/apps/
+COPY --chown=1001:0  target/minio-rest-client.war /config/apps/
 
 # This script will add the requested server configurations, apply any interim fixes and populate caches to optimize runtime
 RUN configure.sh
