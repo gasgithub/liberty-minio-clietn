@@ -171,7 +171,7 @@ public class SimpleRestMinioClient {
         // files.put("files", fileList );
         JsonObject jsonObject = builder.build();
         System.out.println("jsonObject:" + jsonObject);
-        return 
+        return jsonObject;
     }
 
 
