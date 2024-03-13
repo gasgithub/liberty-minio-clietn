@@ -31,6 +31,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonObject;
@@ -171,6 +172,9 @@ public class SimpleRestMinioClient {
         // String fileList[] = { "file1", "file2"};
         // Properties files = new Properties();
         // files.put("files", fileList );
+        JsonArray jsonArray = itemArrayBuilder.build();
+        System.out.println("jsonArray:" + jsonArray);
+        builder.add("items", jsonArray);
         JsonObject jsonObject = builder.build();
         System.out.println("jsonObject:" + jsonObject);
         return jsonObject;
