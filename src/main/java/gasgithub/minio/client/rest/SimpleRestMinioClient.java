@@ -182,8 +182,8 @@ public class SimpleRestMinioClient {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("buckets/{bucket}/{filepath : .+}")
     @Tag(ref = "buckets")
-    public JsonObject getItem(@HeaderParam("X-Access-Key") String accessKey, 
-                              @HeaderParam("X-Secret-Key") String secretKey, 
+    public JsonObject getItem(@Parameter(hidden = true) @HeaderParam("X-Access-Key") String accessKey, 
+                              @Parameter(hidden = true) @HeaderParam("X-Secret-Key") String secretKey, 
                               @PathParam("bucket") String bucket,
                               @PathParam("filepath") String filepath) {
         System.out.println("Bucket:" + bucket);
@@ -234,7 +234,11 @@ public class SimpleRestMinioClient {
     @Path("/download/{bucket}/{filename : .+}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @Tag(ref = "download")
-    public Response getFile(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket, @PathParam("filename") String filename) throws Exception {
+    public Response getFile(@Parameter(hidden = true) @HeaderParam("X-Access-Key") String accessKey, 
+        @Parameter(hidden = true) @HeaderParam("X-Secret-Key") String secretKey, 
+        @PathParam("bucket") String bucket, 
+        @PathParam("filename") String filename) throws Exception {
+
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
         System.out.println("filename: " + filename);
 
@@ -271,8 +275,8 @@ public class SimpleRestMinioClient {
     @Path("/upload/{bucket}/{filename : .+}")
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     @Tag(ref = "upload")
-    public void uploadFile(@HeaderParam("X-Access-Key") String accessKey,
-         @HeaderParam("X-Secret-Key") String secretKey, 
+    public void uploadFile(@Parameter(hidden = true) @HeaderParam("X-Access-Key") String accessKey,
+        @Parameter(hidden = true) @HeaderParam("X-Secret-Key") String secretKey, 
          @PathParam("bucket") String bucket, 
          @PathParam("filename") String filename,
          InputStream stream) throws Exception {
@@ -280,11 +284,12 @@ public class SimpleRestMinioClient {
         
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
         System.out.println("filename: " + filename);
+        System.out.println("stream ava: " + stream.available());
 
         // Create object 'my-objectname' in 'my-bucketname' with content from the input stream.
         minioClient.putObject(
             PutObjectArgs.builder().bucket(bucket).object(filename).stream(
-                stream, stream.available(), -1)
+                stream,  -1, 10485760)
                 .build());
             stream.close();
         System.out.println("my-objectname is uploaded successfully");
