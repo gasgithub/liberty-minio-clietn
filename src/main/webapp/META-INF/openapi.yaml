@@ -1,0 +1,8 @@
+openapi: 3.0.3
+info:
+  title: Object store rest client
+  description: App accessing Object store.
+  license:
+    name: Eclipse Public License - v 1.0
+    url: https://www.eclipse.org/legal/epl-v10.html
+  version: "1.0"

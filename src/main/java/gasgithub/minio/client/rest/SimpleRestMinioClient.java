@@ -1,7 +1,6 @@
 package gasgithub.minio.client.rest;
 
 import java.io.BufferedWriter;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,25 +9,33 @@ import java.io.Writer;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeIn;
+import org.eclipse.microprofile.openapi.annotations.enums.SecuritySchemeType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirementsSet;
+import org.eclipse.microprofile.openapi.annotations.security.SecurityScheme;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import io.minio.GetObjectArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
 import io.minio.Result;
-import io.minio.errors.ErrorResponseException;
-import io.minio.errors.InsufficientDataException;
-import io.minio.errors.InternalException;
-import io.minio.errors.InvalidResponseException;
-import io.minio.errors.ServerException;
-import io.minio.errors.XmlParserException;
+import io.minio.errors.*;
 import io.minio.messages.Bucket;
 import io.minio.messages.Item;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -36,8 +43,10 @@ import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -46,7 +55,29 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 
-@Path("/")
+
+@SecurityScheme(
+    securitySchemeName = "accessKey",
+    type = SecuritySchemeType.APIKEY,
+    apiKeyName = "X-Access-Key",
+    in = SecuritySchemeIn.HEADER
+)
+@SecurityScheme(
+    securitySchemeName = "secretKey",
+    type = SecuritySchemeType.APIKEY,
+    apiKeyName = "X-Secret-Key",
+    in = SecuritySchemeIn.HEADER
+)
+
+@Tag(name = "buckets", description = "Operations related to buckets browsing.")
+@Tag(name = "download", description = "Operations related to downloading assets.")
+@Tag(name = "upload", description = "Operations related to uploading assets.")
+
+
+@SecurityRequirementsSet(
+    value = {@SecurityRequirement(name="accessKey"), @SecurityRequirement(name="secretKey")}
+ )
+@Path("/") 
 public class SimpleRestMinioClient {
     @Inject 
     @ConfigProperty(name="COS_ENDPOINT", defaultValue = "https://s3.us-east.cloud-object-storage.appdomain.cloud")
@@ -63,8 +94,22 @@ public class SimpleRestMinioClient {
     @GET
     @Path("buckets")
     @Produces(MediaType.APPLICATION_JSON)
-    public Properties getBuckets(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey) {
-        Properties buckets = new Properties();
+    @Operation(
+        summary = "Lists buckets",
+        description = "Lists all buckets accessible by the user"
+        //tags = {"buckets"}
+    )
+    @Tag(ref = "buckets")
+    @APIResponse(
+        responseCode = "200",
+        description = "Retruns all buckets accessible by the user as json",
+        content = @Content(mediaType = "application/json",
+            schema = @Schema(implementation = Map.class, example = " { \"buckets\" : [\"bucketA\", \"bucketB\"]}"))
+    )
+    public Map<String, List<String>> getBuckets(@Parameter(hidden = true) @HeaderParam("X-Access-Key") String accessKey,
+                                 @Parameter(hidden = true) @HeaderParam("X-Secret-Key") String secretKey) {
+        //Properties buckets = new Properties();
+        Map<String, List<String>> buckets = new HashMap<>();
 
         System.out.println(accessKey + " : "+ secretKey);
 
@@ -93,7 +138,10 @@ public class SimpleRestMinioClient {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("buckets/{bucket}")
-    public JsonObject getItems(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket) {
+    @Tag(ref = "buckets")
+    public JsonObject getItems(@Parameter(hidden = true) @HeaderParam("X-Access-Key") String accessKey,
+            @Parameter(hidden = true) @HeaderParam("X-Secret-Key") String secretKey,
+            @PathParam("bucket") String bucket) {
         System.out.println("Bucket:" + bucket);
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
 
@@ -104,9 +152,7 @@ public class SimpleRestMinioClient {
         JsonBuilderFactory factory = Json.createBuilderFactory(null);
         JsonObjectBuilder builder = factory.createObjectBuilder();
         JsonArrayBuilder itemArrayBuilder = factory.createArrayBuilder();
-        builder.add("items", itemArrayBuilder);
-
-        
+                
         for (Result<Item> result : results) {
             try {
                 Item item = result.get();
@@ -124,16 +170,18 @@ public class SimpleRestMinioClient {
             }
         }
 
-        // String fileList[] = { "file1", "file2"};
-        // Properties files = new Properties();
-        // files.put("files", fileList );
-        
-        return builder.build();
+        JsonArray jsonArray = itemArrayBuilder.build();
+        System.out.println("jsonArray:" + jsonArray);
+        builder.add("items", jsonArray);
+        JsonObject jsonObject = builder.build();
+        System.out.println("jsonObject:" + jsonObject);
+        return jsonObject;
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("buckets/{bucket}/{filepath : .+}")
+    @Tag(ref = "buckets")
     public JsonObject getItem(@HeaderParam("X-Access-Key") String accessKey, 
                               @HeaderParam("X-Secret-Key") String secretKey, 
                               @PathParam("bucket") String bucket,
@@ -185,6 +233,7 @@ public class SimpleRestMinioClient {
     @GET
     @Path("/download/{bucket}/{filename : .+}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @Tag(ref = "download")
     public Response getFile(@HeaderParam("X-Access-Key") String accessKey, @HeaderParam("X-Secret-Key") String secretKey, @PathParam("bucket") String bucket, @PathParam("filename") String filename) throws Exception {
         MinioClient minioClient = getMinioClient(accessKey, secretKey);
         System.out.println("filename: " + filename);
@@ -218,5 +267,27 @@ public class SimpleRestMinioClient {
         return Response.ok(stream).build();
     }   
 
+    @POST
+    @Path("/upload/{bucket}/{filename : .+}")
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    @Tag(ref = "upload")
+    public void uploadFile(@HeaderParam("X-Access-Key") String accessKey,
+         @HeaderParam("X-Secret-Key") String secretKey, 
+         @PathParam("bucket") String bucket, 
+         @PathParam("filename") String filename,
+         InputStream stream) throws Exception {
+        
+        
+        MinioClient minioClient = getMinioClient(accessKey, secretKey);
+        System.out.println("filename: " + filename);
+
+        // Create object 'my-objectname' in 'my-bucketname' with content from the input stream.
+        minioClient.putObject(
+            PutObjectArgs.builder().bucket(bucket).object(filename).stream(
+                stream, stream.available(), -1)
+                .build());
+            stream.close();
+        System.out.println("my-objectname is uploaded successfully");
+    }    
     
 }
