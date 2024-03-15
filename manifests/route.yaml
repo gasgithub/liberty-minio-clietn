@@ -6,3 +6,7 @@ spec:
   to:
     kind: Service
     name: miniorest-service
+  port:
+    targetPort: 9080
+  tls:
+    termination: edge    
